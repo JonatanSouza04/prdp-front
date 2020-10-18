@@ -31,4 +31,20 @@ export default class Security {
 
     }
 
+
+    static removeKey(ident){
+
+      return new Promise((resolve,reject) => {
+ 
+         try{ 
+            localStorage.removeItem(`@${ident}`);
+            resolve(true);
+         }catch(error){
+             reject(error);
+         }
+ 
+      })
+ 
+     }    
+
 }

@@ -30,7 +30,18 @@ const Menu = () => {
               <NavLink href="/produtos/">Produtos</NavLink>
             </NavItem>
 
-         
+            <NavItem>
+              <NavLink href="/retiradas/">Retirada para venda</NavLink>
+            </NavItem>
+
+            <NavItem>
+              <NavLink href="/vendas/">Minhas Vendas</NavLink>
+            </NavItem>
+
+            <NavItem>
+              <NavLink href="/sair/">Sair</NavLink>
+            </NavItem>
+
           </Nav>
           <NavbarText></NavbarText>
         </Collapse>

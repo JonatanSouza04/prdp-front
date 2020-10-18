@@ -3,6 +3,9 @@ import { Button, Form, FormGroup, Label, Input, Container, Row, Col } from 'reac
 import Security from '../../class/security';
 
 import server_app from '../../class/server';
+import Api from '../../class/api'
+
+const uri = 'employees';
 
 const Login = () => {
   
@@ -10,31 +13,29 @@ const Login = () => {
   const [cpf,setCpf]           = useState('');
 
 
-  const onValid = ({}) => {
+  const onValid = async () => {
 
           setIsAuth(true);
 
-          let url = `${server_app}/employees/valid/${cpf}`;
+         try{
+          let result = await Api.get(`${uri}/valid/${cpf}`)
+         
+          if(result.length > 0 && result[0]._id !== undefined)
+          {
+            setIsAuth(false);
+            Security.setKey('user',JSON.stringify(result));
 
-          fetch(url)
-               .then(res => res.json())
-               .then(
-                 (result) => {
-                            
-                           if(result.length > 0 && result[0]._id !== undefined)
-                           {
-                             setIsAuth(false);
-                             Security.setKey('user',JSON.stringify(result));
-
-                             window.location = '/';
-                           }
-                      }, 
-                 (error) => {
-                       setIsAuth(false);
-                       console.log(error);
-                 }
-           )
-  
+            window.location = '/';
+          }
+          else
+          {
+            setIsAuth(false);
+            console.log(result);
+          }
+        }catch(error){
+          setIsAuth(false);
+          console.log(error);
+        }
   }
 
 

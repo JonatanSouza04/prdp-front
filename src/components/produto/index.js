@@ -3,16 +3,15 @@ import { Button, Table, Modal, ModalHeader, ModalBody, ModalFooter, Form, FormGr
 
 import Api from '../../class/api'
 
-const uri = 'employees';
+const uri = 'products';
 
-const Funcionario = () => {
+const Produto = () => {
 
-   const [lista, setLista]     = useState([]);
-   const [loading, setLoading] = useState(true);
-   const [add, setAdd]         = useState(false);
-   const [cpf,setCpf]          = useState('');
-   const [nome,setNome]        = useState('');
-   const [save,setSave]        = useState(false);
+   const [lista, setLista]            = useState([]);
+   const [loading, setLoading]        = useState(true);
+   const [add, setAdd]                = useState(false);
+   const [save, setSave]              = useState(false);
+ 
 
    const onLista = useCallback( async () => {
 
@@ -30,29 +29,37 @@ const Funcionario = () => {
 
    const onSalvar = async() => {
 
-        setSave(true);
+         let fields = {code:'',description:'',amount:0,withdrawn:0,validated:0}
 
+         fields['code']        = document.getElementById('code').value;
+         fields['description'] = document.getElementById('description').value;
+         fields['amount']      = document.getElementById('amount').value;
 
-        if(nome.trim().length === 0)
+         setSave(true);
+ 
+        if(fields.code.trim().length === 0)
         {
-            alert('Nome inválido');
+            alert('Código inválido');
             setSave(false);
             return false;
         }  
 
-        let valueCPF = cpf !== '' ? cpf.match(/\d/g).join('') : '';
-
-        if(valueCPF.length !== 11)
+        if(fields.description.trim().length === 0)
         {
-            alert('CPF inválido');
+            alert('Descrição inválida');
             setSave(false);
             return false;
-        }
+        }  
 
-        let body = {name: nome, cpf: cpf }
+        if(fields.amount.value <= 0)
+        {
+            alert('Quantidade inválida');
+            setSave(false);
+            return false;
+        } 
 
         try{
-          let result = await Api.post(uri,body);
+          let result = await Api.post(uri,fields);
           
           if(result.msg !== undefined)
           {
@@ -72,7 +79,7 @@ const Funcionario = () => {
            setSave(false);
            setAdd(false);
            alert('Falha ao salvar o registro');
-       }       
+       }      
 
    };
 
@@ -92,7 +99,7 @@ const Funcionario = () => {
               
               <div style={{display:'flex',justifyContent:'space-between',marginLeft:50,marginRight:50}}>
                  <div>
-                   <strong>Funcionários</strong>
+                   <strong>Produtos</strong>
                  </div> 
                  <div>
                   <Button onClick={() => setAdd(true)}>Adicionar</Button>
@@ -102,18 +109,22 @@ const Funcionario = () => {
                 <Table striped bordered>
                   <thead>
                     <tr>
-                        <th>#</th>
-                        <th>CPF</th>
-                        <th>Name</th>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Quantidade em estoque</th>
+                        <th>Qtd.retirada para venda</th>
+                        <th>Validade fora do freezer em horas</th>
                      </tr>
                   </thead>
                   <tbody>
            
                 {lista.map(item => {
                  return (<tr key={item._id}>
-                      <td>{item._id}</td>
-                      <td>{item.cpf}</td>
-                      <td>{item.name}</td>
+                       <td>{item.code}</td>
+                       <td>{item.description}</td>
+                       <td>{item.amount}</td>
+                       <td>{item.withdrawn}</td>
+                       <td>{item.validated}</td>
                       </tr>
                     )
                 })             
@@ -128,13 +139,18 @@ const Funcionario = () => {
                   <Form>
 
                     <FormGroup>
-                        <Label for="name">Nome</Label>
-                        <Input type="text" name="name" id="name" placeholder="Nome" value={nome} onChange={e => setNome(e.target.value)} />
+                        <Label for="code">Código</Label>
+                        <Input type="text" name="code" id="code" placeholder="Código" />
                     </FormGroup>
 
                     <FormGroup>
-                        <Label for="cpf">CPF (Somente números)</Label>
-                        <Input type="text" name="cpf" id="cpf" placeholder="CPF" value={cpf} onChange={e => setCpf(e.target.value)} pattern="^[0-9]*$" maxLength={11}/>
+                        <Label for="description">Descrição</Label>
+                        <Input type="text" name="description" id="description" placeholder="Descrição"/>
+                    </FormGroup>
+
+                    <FormGroup>
+                        <Label for="amount">Quantidade em estoque</Label>
+                        <Input type="number" name="amount" id="amount" placeholder="Quantidade em estoque"/>
                     </FormGroup>
 
                  </Form> 
@@ -154,4 +170,4 @@ const Funcionario = () => {
   
 }
 
-export default React.memo(Funcionario);
+export default React.memo(Produto);

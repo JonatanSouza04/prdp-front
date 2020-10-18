@@ -19,6 +19,14 @@ const Main = ({form}) => {
 
          setLogged(user !== null && user.length > 0 && user[0]._id !== '' );
          setTimeout(() =>  setAuth(false), 500);
+
+
+         if(form === 'sair')
+         {
+            Security.removeKey('user');
+
+            setTimeout(() => window.locate = '/',1000);
+         }
      
       }  
  

@@ -10,6 +10,9 @@ const Routes = ({...props}) => {
           <Route exact path='/' component={() => <Main form={'cccc'}  /> } />
           <Route path='/produtos' component={() => <Main  form={'produtos'}  /> } />
           <Route path='/funcionarios' component={() => <Main  form={'funcionarios'}  /> } />
+          <Route path='/retiradas' component={() => <Main  form={'retiradas'}  /> } /> 
+          <Route path='/vendas' component={() => <Main  form={'vendas'}  /> } /> 
+          <Route path='/sair' component={() => <Main  form={'sair'}  /> } /> 
       </Switch>
     </BrowserRouter>
   )
