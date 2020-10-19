@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Table, Modal, ModalHeader, ModalBody, ModalFooter, Form, FormGroup, Label, Input  } from 'reactstrap';
 
 import Api       from '../../class/api'
-import Security from '../../class/security';
+import Security  from '../../class/security';
+import { db_create, db_insert, db_select, db_exec }    from '../../class/websql';
 
 const uri = 'sales';
 
@@ -10,28 +11,94 @@ const Produto = () => {
 
    const [lista, setLista]        = useState([]);
    const [products, setProducts]  = useState([]);
-
+   const [productsCache, setProductsCache] = useState([]);
    const [loading, setLoading]    = useState(true);
    const [add, setAdd]            = useState(false);
    const [save, setSave]          = useState(false);
-   const [user,setUser]           = useState(null)
+   const [user,setUser]           = useState(null);
+
 
 
    const onLista = useCallback( async () => {
 
+        setLoading(true) 
         let user =  await Security.getKey('user');
 
         if(user !== null)
         {
  
-             user = JSON.parse(user)[0]
- 
-             try{
+              user = JSON.parse(user)[0]
+              let result  = [];
+              
+             try{ 
+               result = await Api.get(`withdrawals/${user._id}`);
 
-                let result = await Api.get(`withdrawals/${user._id}`);
-                setProducts(result);
+               // Sempre atualiza a lista de produtos disponíveis.
+               for(let i = 0; i < result.length; i++)
+               {
+                  db_exec('DELETE FROM withdrawals WHERE _id =? ',[result[i]._id]);
+                  db_insert('INSERT INTO withdrawals (_id, employees, products, amount, status) VALUES(?,?,?,?,?)',[
+                    result[i]._id, result[i].employees, JSON.stringify(result[i].products), result[i].amount, result[i].status
+                  ]) 
+               }
+             }catch(error){
+                
+                result = [];
+                let listWith = await db_select('SELECT _id, employees, products, amount, status FROM withdrawals');
+                for(let i = 0; i < listWith.length; i++){
+                    let item = listWith[i];
+                    item.products = JSON.parse(item.products);
+                    result.push(item);
+                }
+             }
 
-                result = await Api.get(`${uri}/${user._id}`);
+              
+              try{
+                let listProducts = [];
+
+                await result.map(item => {
+                      let exists = listProducts.filter(list => list.products._id === item.products._id);
+                      if(exists.length === 0)
+                        listProducts.push(item)  
+                      else
+                      {
+                        let index = listProducts.findIndex(i => i.products._id === item.products._id);
+                        if(index !== -1)
+                        listProducts[index].amount += item.amount; 
+                      }   
+                });
+
+                setProducts(listProducts);
+
+                try{
+                  result = await Api.get(`${uri}/${user._id}`);
+                }catch(error){
+                    result = [];
+                }
+
+
+                for(let i = 0; i < result.length; i++){
+                    result[i]['status'] = 1;
+                }
+
+                let semSincronizar = await onSelectLocal();
+
+                if(semSincronizar.length > 0)
+                {
+               
+                    for(let i = 0; i < semSincronizar.length; i++){
+                        let item = semSincronizar[i];
+                        item['_id'] = `item_${i}`;
+                        let product = await db_select('SELECT * FROM products WHERE _id = ? ',[item.products]); 
+                        if(product.length > 0)
+                        {
+                            item['products'] = product[0];
+                            result.push(item);
+                        }
+                    }
+
+                }
+
                 setLista(result);
                 setUser(user);
 
@@ -42,6 +109,8 @@ const Produto = () => {
              }
 
        }
+
+       setLoading(false);
 
    },[lista]);
 
@@ -89,42 +158,107 @@ const Produto = () => {
             return false;
         }
 
+        await onInsertLocal(fields); // Salva primeito local
+
 
         try{
           let result = await Api.post(uri,fields);
           
           if(result.msg !== undefined)
           {
-            alert(result.msg);
-            setSave(false);
-
+           
+              alert(result.msg);
+              setSave(false);
+             
           }
           else 
           {
 
+             db_exec('UPDATE sales SET status = ? WHERE products = ? AND employees = ? ',[1,fields.products,fields.employees]); // Sincronizado
              onLista();
              setSave(false);
              setAdd(false);
+
           }
 
        }catch(error){
            setSave(false);
            setAdd(false);
-           alert('Falha ao salvar o registro');
-           console.log(error);
+           alert('Não foi possível inserir a venda no servidor');
+           onLista();
+      
        }      
 
    };
 
+   const onInsertLocal = async (fields) => {
+
+         return await new Promise( async(resolve,reject) => {
+             try{ 
+              await db_insert('INSERT INTO sales (products, employees, amount, status) VALUES(?,?,?,?)',[fields.products, fields.employees, fields.amount, 0])
+              resolve(true);
+             }catch(error){
+                 reject(error);
+             }
+         }) 
+   }
+
+   const onSelectLocal = async () => {
+  
+        return await new Promise( async(resolve,reject) => {
+           try{ 
+              let select = await db_select('SELECT products, employees, amount, status FROM sales WHERE status = 0',[]);
+              resolve(select === undefined ? [] : select);
+            }catch(error){
+              reject(error);
+            }
+        });
+
+   }
+
+   const onSinc = async () => {
+       return await new Promise( async(resolve,reject) => {
+
+                let semSincronizar = await onSelectLocal();
+
+                for(let i = 0; i < semSincronizar.length; i++){
+                     const { products, employees, amount } = semSincronizar[i];
+                     try{ 
+                        let fields = {products: products, employees: employees, amount: amount };
+                        let result = await Api.post(uri,fields);
+         
+                        if(result.msg === undefined) //deu certo
+                        db_exec('UPDATE sales SET status = ? WHERE products = ? AND employees = ? ',[1,fields.products,fields.employees]); // Sincronizado
+                     }catch(error){
+
+                     }  
+  
+                 }
+
+                 resolve(true);
+       });
+         
+   }
+
    useEffect(() => {
 
       async function fetchData(){
-          onLista();      
+        
+           
+          await db_create('CREATE TABLE IF NOT EXISTS sales (products text, employees text, amount int, status int)')
+          await db_create('CREATE TABLE IF NOT EXISTS withdrawals (_id text, products text, employees text, amount int, status int)');
+       
+          await onSinc(); // Sincroniza os pendentes
+          await onLista();      
+
        }  
  
       fetchData();
 
    }, [])
+
+    if(loading)
+    return(<div style={{display:'flex',height:200,justifyContent:'center',alignItems:'center'}}><label>Carregando....</label></div>)
 
     return(
         <div>
@@ -133,6 +267,7 @@ const Produto = () => {
               <div style={{display:'flex',justifyContent:'space-between',marginLeft:50,marginRight:50}}>
                  <div>
                    <strong>Minhas Vendas ({user !== null ? user.name : ''})</strong>
+                   <p>Essa tela funciona de forma offline - deslique o servidor e registre uma venda</p>
                  </div> 
                  <div>
                   <Button onClick={() => setAdd(true)}>Adicionar</Button>
@@ -145,6 +280,7 @@ const Produto = () => {
                         <th>Produto</th>
                         <th>Quantidade</th>
                         <th>Data</th>
+                        <th>Sincronizado</th>
                      </tr>
                   </thead>
                   <tbody>
@@ -153,7 +289,8 @@ const Produto = () => {
                  return (<tr key={item._id}>
                        <td>{item.products.description}</td>
                        <td>{item.amount}</td>
-                       <td>{item.createdAt}</td>
+                       <td>{item.createdAt !== undefined ? item.createdAt : ''}</td>
+                       <td>{item.status === 1 ? 'Sim' : 'Não'}</td>
                       </tr>
                     )
                 })             
@@ -171,14 +308,14 @@ const Produto = () => {
                       <Label for="product">Produto</Label>
                       <Input type="select" name="select" id="product">
                           {products.map(item => (
-                            <option value={item.products._id}>{item.products.description}</option>
+                            <option key={item._id} value={item.products._id}>{item.products.description}</option>
                          ))}
                       </Input>
                     </FormGroup>
 
                     <FormGroup>
-                        <Label for="amount">Quantidade em estoque</Label>
-                        <Input type="number" name="amount" id="amount" placeholder="Quantidade em estoque"/>
+                        <Label for="amount">Quantidade</Label>
+                        <Input type="number" name="amount" id="amount" placeholder="Quantidade"/>
                     </FormGroup>
 
                  </Form> 

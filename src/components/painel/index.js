@@ -14,8 +14,7 @@ const Painel = ({form}) => {
    useEffect(() => {
 
       async function fetchData(){
-             
-            console.log('paibel',form);
+   
       }  
  
      fetchData();
@@ -42,6 +41,19 @@ const Painel = ({form}) => {
                 {form === 'vendas' && 
                   <Venda />
                 }
+                
+                {form === '' && 
+                
+                 <div>
+                    <ul>
+                      <li>Cadastre um funcionário (Logue com o CPF criado)</li>
+                      <li>Cadastre um produto com o seu estoque</li>
+                      <li>Realiza uma retirada para venda (Estoque => Funcionário)</li>
+                      <li>Registre um venda</li>
+                    </ul>
+                  </div>  
+                }
+
 
             </div>
         </div>

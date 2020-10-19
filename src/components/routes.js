@@ -7,7 +7,7 @@ const Routes = ({...props}) => {
  return (
      <BrowserRouter >
       <Switch>
-          <Route exact path='/' component={() => <Main form={'cccc'}  /> } />
+          <Route exact path='/' component={() => <Main form={''}  /> } />
           <Route path='/produtos' component={() => <Main  form={'produtos'}  /> } />
           <Route path='/funcionarios' component={() => <Main  form={'funcionarios'}  /> } />
           <Route path='/retiradas' component={() => <Main  form={'retiradas'}  /> } /> 
